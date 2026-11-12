@@ -1,0 +1,131 @@
+# SwiftSFTP Explorer
+
+A native Windows SFTP file manager built with **Rust + Tauri 2 + React**. It looks and feels like
+Windows 11 File Explorer, but every file operation runs over a real SSH/SFTP connection handled in
+Rust.
+
+> ภาษาไทย: ดู [README_TH.md](README_TH.md) สำหรับคู่มือติดตั้งและใช้งานฉบับเต็ม
+
+---
+
+## What it does
+
+| Area | Details |
+| --- | --- |
+| Connections | Saved profiles, password / private key / Windows OpenSSH agent auth, host-key verification (TOFU + change detection), keepalive, shared SSH transport per server |
+| Browsing | Multi-tab, breadcrumbs, address bar with path completion, back/forward/up, details / list / grid views, virtualised lists for 10k+ entries, sorting, hidden files |
+| File operations | New folder/file, rename, delete (recursive, guarded), copy/cut/paste, multi-select, chmod, properties, drag & drop from Explorer, drag between tabs |
+| Transfers | Queue, configurable concurrency, real byte progress and measured speed, ETA, pause/resume, cancel, retry, temporary `.part` files + atomic rename, size and optional SHA-256 verification, history |
+| Editor | Monaco-based editor for text/config files with syntax highlighting, Ctrl+S, unsaved indicator, remote-change conflict detection |
+| Search | Recursive search by name, extension, size and modified date, with live progress and cancel |
+| Security | Passwords and key passphrases encrypted with Windows DPAPI, no plaintext secrets in SQLite or logs, strict host-key checks, shell arguments quoted, dangerous paths refused |
+
+## Requirements (end user)
+
+- Windows 10 or Windows 11 (64-bit)
+- WebView2 runtime (the installer downloads it if it is missing)
+- Nothing else — no Rust, Node.js, npm or Visual Studio
+
+## Install
+
+1. Run `SwiftSFTP-Setup.exe` from `release/windows/`.
+2. Choose the install location and whether to create desktop / Start-menu shortcuts.
+3. Launch the app and add your first server.
+
+The build in this repository is **not code-signed**, so Windows SmartScreen may show
+"Windows protected your PC". Choose *More info → Run anyway*. No security setting is disabled by the
+app.
+
+## Build from source
+
+Requirements: Rust stable (MSVC toolchain), Node.js 20+, pnpm 10+, NSIS 3 (for the installer).
+
+```bash
+pnpm install
+pnpm icons            # regenerate icon set + installer artwork (optional)
+pnpm typecheck        # TypeScript
+pnpm test             # Vitest unit tests
+cd src-tauri
+cargo test            # Rust unit tests
+cargo clippy --all-targets
+cd ..
+pnpm tauri build      # release build + NSIS installer
+```
+
+Artifacts:
+
+- `src-tauri/target/release/swiftsftp.exe`
+- `src-tauri/target/release/bundle/nsis/SwiftSFTP Explorer_1.0.0_x64-setup.exe`
+
+`scripts/package-release.sh` (or `.ps1` on Windows) copies and renames them into `release/windows/`
+as `SwiftSFTP-Setup.exe` and `SwiftSFTP-Portable.zip`.
+
+## Architecture
+
+```
+src/                    React UI (Tailwind 4, Radix primitives, zustand)
+  components/           chrome, file list, transfer dock, dialogs
+  stores/app.ts         tabs, selection, clipboard, dialogs, transfer state
+  lib/api.ts            typed wrappers over Tauri commands
+src-tauri/src/
+  ssh.rs                shared SSH transports, host-key verification, agent/key auth, remote exec
+  sftp.rs               SFTP channels, listing, file operations, search, text read/write
+  transfer.rs           bounded worker pool, progress, pause/cancel/retry, verification
+  db.rs                 SQLite: profiles, trusted keys, favourites, recent, history, settings
+  secrets.rs            Windows DPAPI (CryptProtectData) for credentials
+  commands.rs           Tauri command surface used by the UI
+  remote_path.rs        POSIX path helpers + shell quoting
+installer/              NSIS artwork and licence
+scripts/                icon generation, release packaging
+```
+
+Design notes:
+
+- One **SSH transport** is authenticated per saved server. Tabs, searches and transfers open their
+  own **SFTP channels** over it, so opening a tab reuses the existing login.
+- Transfers stream through bounded buffers; files are never read into memory whole.
+- Uploads/downloads write to a temporary name and rename into place only after the size (and
+  checksum, when available) matches.
+- Same-server copies use the SFTP `rename` for moves, `cp`/`mv` over SSH when you enable
+  "server-side copy commands", and only otherwise stream through the client.
+- Remote-to-remote copies between different servers always stream through the client.
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| Ctrl+T / Ctrl+W | New tab / close tab |
+| Ctrl+Tab / Ctrl+Shift+Tab | Next / previous tab |
+| Ctrl+Shift+K | Duplicate tab |
+| Ctrl+R | Refresh |
+| Ctrl+A, Ctrl+C, Ctrl+X, Ctrl+V | Select all, copy, cut, paste |
+| F2 | Rename |
+| Delete / Shift+Delete | Delete (with / without confirmation) |
+| Alt+←, Alt+→, Alt+↑, Backspace | Back, forward, up |
+| Enter | Open selected item |
+| Ctrl+, | Settings |
+| Ctrl+J | Transfer panel |
+
+## Tests
+
+- Rust: 22 unit tests (path normalisation, shell quoting, POSIX modes, text decoding, DB
+  persistence, DPAPI round-trip, transfer contracts). `cargo test`
+- Frontend: 19 Vitest unit tests (path utilities, formatting, permission masks, file
+  classification). `pnpm test`
+- Manual: the app was launched and the connection dialog, layout and window controls were verified
+  visually. See `release/TEST_REPORT.md` for the exact list of what was and was not exercised.
+
+## Known limitations
+
+See `release/KNOWN_LIMITATIONS.md`. The important ones:
+
+- No code signing certificate: SmartScreen warning on first run.
+- SSH agent authentication uses the Windows OpenSSH agent named pipe only.
+- Drag **out** to Windows Explorer is not implemented (drop **in** from Explorer is).
+- Pause/resume continues the current session; suspended transfers are not resumed after restarting
+  the app.
+- The editor detects UTF-8 / UTF-16LE / UTF-8-BOM and always saves as UTF-8.
+
+## Licence
+
+Proprietary; see `installer/LICENSE.txt`.

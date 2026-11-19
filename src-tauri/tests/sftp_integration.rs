@@ -32,6 +32,27 @@ use swiftsftp_lib::transfer::{TransferManager, TransferSpec};
 const TEST_USER: &str = "tester";
 const TEST_PASSWORD: &str = "sftp-test-password";
 
+/// When set, the fake server reports a hash that does not match the file, which
+/// is how the checksum-mismatch path is exercised.
+static CORRUPT_HASHES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Map a remote path (`/a/b`) onto the sandbox directory.
+fn sandbox_path(root: &Path, remote: &str) -> PathBuf {
+    let mut path = root.to_path_buf();
+    for part in remote.split('/') {
+        match part {
+            "" | "." => {}
+            ".." => {
+                if path != root {
+                    path.pop();
+                }
+            }
+            other => path.push(other),
+        }
+    }
+    path
+}
+
 // ---------------------------------------------------------------- test server
 
 /// Minimal but complete SFTP server backed by a local directory.
@@ -110,19 +131,7 @@ impl SftpFs {
 
     /// Map a remote path (`/a/b`) onto the sandbox directory.
     fn local(&self, remote: &str) -> PathBuf {
-        let mut path = self.root.clone();
-        for part in remote.split('/') {
-            match part {
-                "" | "." => {}
-                ".." => {
-                    if path != self.root {
-                        path.pop();
-                    }
-                }
-                other => path.push(other),
-            }
-        }
-        path
+        sandbox_path(&self.root, remote)
     }
 
     fn attrs(&self, path: &Path, follow: bool) -> Result<FileAttributes, StatusCode> {
@@ -467,6 +476,47 @@ impl russh::server::Handler for SshSession {
         }
         Ok(())
     }
+
+    /// Only the remote-hash command the app sends is implemented; anything else
+    /// reports "command not found" so the app falls back to size verification.
+    async fn exec_request(
+        &mut self,
+        channel_id: ChannelId,
+        data: &[u8],
+        session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        let command = String::from_utf8_lossy(data).to_string();
+        session.channel_success(channel_id)?;
+
+        let mut stdout = String::new();
+        let mut code = 127u32;
+        if let Some(rest) = command.split("sha256sum -- ").nth(1) {
+            let raw = rest.split(';').next().unwrap_or("").trim();
+            let path = raw.trim_matches('\'').replace("'\\''", "'");
+            let local = sandbox_path(&self.root, &path);
+            match swiftsftp_lib::transfer::sha256_file(&local).await {
+                Ok(hash) => {
+                    // A valid-looking but wrong hash, to exercise the mismatch path.
+                    let hash = if CORRUPT_HASHES.load(std::sync::atomic::Ordering::SeqCst) {
+                        "0".repeat(64)
+                    } else {
+                        hash
+                    };
+                    stdout = format!("{hash}  {path}\n");
+                    code = 0;
+                }
+                Err(_) => code = 1,
+            }
+        }
+
+        if !stdout.is_empty() {
+            session.data(channel_id, stdout.into_bytes())?;
+        }
+        session.exit_status_request(channel_id, code)?;
+        session.eof(channel_id)?;
+        session.close(channel_id)?;
+        Ok(())
+    }
 }
 
 // ---------------------------------------------------------------- test harness
@@ -517,6 +567,10 @@ fn unique_dir(prefix: &str) -> PathBuf {
 impl Harness {
     /// Start a server + managers, and pre-trust the server host key (no prompt).
     async fn start() -> Harness {
+        Harness::start_with(Settings::default()).await
+    }
+
+    async fn start_with(settings: Settings) -> Harness {
         let root = unique_dir("srv");
         let local_dir = unique_dir("local");
 
@@ -556,7 +610,7 @@ impl Harness {
         let sink: Sink = recorder.clone();
         let ssh = Arc::new(SshManager::with_sink(sink.clone(), db.clone()));
         let sessions = Arc::new(SessionManager::with_sink(ssh.clone(), sink.clone()));
-        let settings = Arc::new(parking_lot::RwLock::new(Settings::default()));
+        let settings = Arc::new(parking_lot::RwLock::new(settings));
         let transfers = Arc::new(TransferManager::with_sink(
             sink,
             ssh.clone(),
@@ -1193,5 +1247,82 @@ async fn rejects_a_wrong_password_without_leaving_a_transport() {
         error
     );
     assert!(!harness.ssh.is_connected("test-profile"));
+    harness.cleanup();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn verifies_uploads_with_sha256_and_discards_a_mismatch() {
+    use std::sync::atomic::Ordering;
+
+    // Server-side commands are off by default; this test opts in explicitly.
+    let settings = Settings {
+        allow_server_commands: true,
+        verify_checksums: true,
+        ..Settings::default()
+    };
+    let harness = Harness::start_with(settings).await;
+    let session = harness.open_session().await;
+    harness
+        .sessions
+        .mkdir(&session, "/", "check")
+        .await
+        .unwrap();
+
+    let local_file = harness.local("payload.bin");
+    // 3 MiB: several buffers per transfer, so a wrong write offset would show up
+    // as a hash mismatch instead of passing a size-only check.
+    let payload: Vec<u8> = (0..3 * 1024 * 1024usize)
+        .map(|i| ((i * 31 + i / 251) % 251) as u8)
+        .collect();
+    std::fs::write(&local_file, &payload).unwrap();
+
+    // Happy path: the hash reported by the server matches the local file.
+    let id = harness.enqueue(upload_spec(
+        "test-profile",
+        &local_file,
+        "/check/payload.bin",
+        "replace",
+    ));
+    let task = harness.wait_transfer(&id).await;
+    assert_eq!(task.status, "completed", "{:?}", task.error);
+    assert_eq!(task.method.unwrap_or_default(), "stream + sha256");
+    assert_eq!(
+        std::fs::read(harness.root.join("check/payload.bin")).unwrap(),
+        payload,
+        "the uploaded bytes must be identical"
+    );
+
+    // Mismatch: the server reports a different hash, the file is discarded and
+    // the message names both hashes so the failure can be diagnosed.
+    CORRUPT_HASHES.store(true, Ordering::SeqCst);
+    let id = harness.enqueue(upload_spec(
+        "test-profile",
+        &local_file,
+        "/check/payload.bin",
+        "rename",
+    ));
+    let task = harness.wait_transfer(&id).await;
+    CORRUPT_HASHES.store(false, Ordering::SeqCst);
+    assert_eq!(task.status, "failed");
+    let error = task.error.unwrap_or_default();
+    assert!(error.contains("SHA-256 mismatch"), "{error}");
+    assert!(error.contains("local"), "{error}");
+    assert!(error.contains("server"), "{error}");
+    assert!(
+        !harness.root.join("check/payload (2).bin").exists(),
+        "a mismatched upload must not be committed"
+    );
+    let leftovers: Vec<String> = std::fs::read_dir(harness.root.join("check"))
+        .unwrap()
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.file_name().to_string_lossy().to_string())
+        .filter(|name| name.contains("swiftsftp-"))
+        .collect();
+    assert!(
+        leftovers.is_empty(),
+        "the partial upload must be cleaned up: {leftovers:?}"
+    );
+
+    harness.sessions.close(&session);
     harness.cleanup();
 }

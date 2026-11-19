@@ -29,7 +29,7 @@ pnpm test
 cd src-tauri
 cargo fmt --check
 cargo clippy --all-targets      # expected: 0 warnings
-cargo test                      # expected: 25 unit + 5 end-to-end tests
+cargo test                      # expected: 26 unit + 6 end-to-end tests
 cd ..
 ```
 

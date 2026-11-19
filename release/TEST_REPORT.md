@@ -19,8 +19,8 @@ by these commands now — nothing is carried over from earlier releases.
 | TypeScript | `pnpm typecheck` | ✅ no errors |
 | Frontend unit tests | `pnpm test` | ✅ 19 passed (2 files) |
 | Production frontend build | `pnpm build` | ✅ built |
-| Rust unit tests | `cargo test --lib` | ✅ 25 passed |
-| Rust end-to-end tests | `cargo test --test sftp_integration` | ✅ 5 passed |
+| Rust unit tests | `cargo test --lib` | ✅ 26 passed |
+| Rust end-to-end tests | `cargo test --test sftp_integration` | ✅ 6 passed |
 | Rust lints | `cargo clippy --all-targets` | ✅ 0 warnings |
 
 **The end-to-end suite now exists and runs without any external server.** `src-tauri/tests/sftp_integration.rs`
@@ -40,6 +40,9 @@ What the suite covers:
 - recursive search with a caller-supplied id, progress events carrying that id, and cancelling a
   running search
 - upload and download with `replace`, `skip` and `rename`, plus same-server copy and move
+- SHA-256 verified uploads: a 3 MiB file is uploaded, hashed on the server through an SSH `exec`
+  channel and compared byte-for-byte; a deliberately wrong server hash must fail the transfer,
+  remove the partial file and name both hashes in the error message
 
 **Defects found by these tests and fixed in this pass** (each was a real bug, not a hypothetical):
 
@@ -63,6 +66,14 @@ What the suite covers:
    user opts in through the new first-run notice; the Settings toggle warns before turning them off.
 9. Thai i18n: the four missing keys were added and the remaining hard-coded English in the store,
    dialogs and window chrome moved into `src/lib/i18n.ts`.
+10. **Checksum parsing.** A real field log from this machine showed every upload to a live server
+    failing with "SHA-256 checksum mismatch — the uploaded file was discarded" (SCP-verified: the
+    bytes were fine, the comparison was not). The hash is now taken as the first 64-character hex
+    token in the command output, which also covers GNU coreutils' leading-backslash escaping of
+    awkward file names, banner text before the result and uppercase output. Mismatch messages now
+    include the first 12 characters of both hashes and a warning with the full pair is logged, so a
+    recurrence can be diagnosed from the log alone. The new end-to-end test uploads 3 MiB and
+    verifies it through that same path.
 
 Not covered by the suite (see `KNOWN_LIMITATIONS.md`): the updater round-trip, the interactive
 installer wizard, distribution-specific server quirks (ProFTPD/OpenSSH edge cases, non-POSIX shells,

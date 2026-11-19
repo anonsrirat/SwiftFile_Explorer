@@ -1,5 +1,31 @@
 # SwiftSFTP Explorer — Release Notes
 
+## 1.1.0 — 2026-11-19 (hardening pass)
+
+- **Overwrite policies are respected everywhere.** A remote move used to `rename` straight onto the
+  requested destination before the policy was resolved, so "skip" silently replaced the file that was
+  already there and "rename" never applied. A download with "rename" deleted the local file it was
+  supposed to keep. Both are fixed; temporary files are unique per job and a failed transfer no
+  longer leaves a `.part` file behind.
+- **Recursive delete works on nested folders.** Deleting a folder that contained a subfolder always
+  failed with a server error, because the parent was removed before its children.
+- **Search: live progress and a working Stop.** The id is created by the UI instead of being returned
+  after the walk finished, so progress events match and "Stop" really cancels the scan.
+- **Settings that used to do nothing now work.** "Retry attempts" drives automatic retries for
+  transient failures (bounded, with backoff), the default local folder pre-fills the download picker,
+  and the three startup behaviours behave as labelled. The unused connection-pool setting is gone.
+- **Server-side commands are off by default.** `cp`/`mv` on the server and remote SHA-256 checks now
+  need an explicit opt-in from a short first-run notice; until then copies stream through this
+  computer and are verified by size.
+- **Checksum mismatches are diagnosable.** The hash is read as the first 64-character hex token in
+  the command output (tolerating GNU's escaped file names and shell banners), and a mismatch reports
+  the first 12 characters of both hashes and logs the full pair.
+- **Complete Thai UI.** Every string in the store, dialogs and window chrome is translated (336 keys,
+  English and Thai at parity); the four previously missing Thai keys are included.
+- **End-to-end tests.** `cargo test` now also drives the real managers against an in-process SSH/SFTP
+  server: listing, file operations, text editing with conflict detection, recursive delete, search +
+  cancel, every overwrite policy, SHA-256 verified uploads, and a rejected password.
+
 ## 1.1.0 — 2026-11-12 (second build)
 
 - **Live folder updates.** The open folder now refreshes itself: every 4 s while the window is

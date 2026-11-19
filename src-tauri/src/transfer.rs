@@ -712,9 +712,19 @@ impl TransferManager {
                     let local_hash = sha256_file(&local_path).await?;
                     if remote_hash != local_hash {
                         let _ = sftp.remove_file(temp.clone()).await;
+                        tracing::warn!(
+                            job = %spec.id,
+                            local = %local_hash,
+                            remote = %remote_hash,
+                            "upload checksum mismatch"
+                        );
                         return Err(AppError::new(
                             "checksum_mismatch",
-                            "SHA-256 checksum mismatch — the uploaded file was discarded",
+                            format!(
+                                "SHA-256 mismatch (local {}…, server {}…) — the uploaded file was discarded",
+                                short_hash(&local_hash),
+                                short_hash(&remote_hash)
+                            ),
                         ));
                     }
                     self.set_method(task, "stream + sha256");
@@ -832,9 +842,19 @@ impl TransferManager {
                     let local_hash = sha256_file(&temp).await?;
                     if remote_hash != local_hash {
                         let _ = tokio::fs::remove_file(&temp).await;
+                        tracing::warn!(
+                            job = %spec.id,
+                            local = %local_hash,
+                            remote = %remote_hash,
+                            "download checksum mismatch"
+                        );
                         return Err(AppError::new(
                             "checksum_mismatch",
-                            "SHA-256 checksum mismatch — the downloaded file was discarded",
+                            format!(
+                                "SHA-256 mismatch (server {}…, local {}…) — the downloaded file was discarded",
+                                short_hash(&remote_hash),
+                                short_hash(&local_hash)
+                            ),
                         ));
                     }
                     self.set_method(task, "stream + sha256");
@@ -1133,11 +1153,10 @@ impl TransferManager {
                 "No SHA-256 tool on the server",
             ));
         }
-        out.stdout
-            .split_whitespace()
-            .next()
-            .map(|s| s.to_lowercase())
-            .ok_or_else(|| AppError::new("checksum_unavailable", "Unexpected checksum output"))
+        parse_sha256(&out.stdout).ok_or_else(|| {
+            tracing::debug!(stdout = %out.stdout, stderr = %out.stderr, "unexpected checksum output");
+            AppError::new("checksum_unavailable", "Unexpected checksum output")
+        })
     }
 
     pub fn pause(&self, id: &str) -> AppResult<()> {
@@ -1274,6 +1293,28 @@ impl TransferManager {
 fn temp_name(dest: &str, id: &str) -> String {
     let short = &id[..8.min(id.len())];
     format!("{dest}.swiftsftp-{short}.part")
+}
+
+/// Parse the SHA-256 line printed by `sha256sum` / `shasum`.
+///
+/// The hash is the first 64-character hex token on the line. GNU coreutils also
+/// prefixes an escaped line with a backslash when the file name contains a
+/// backslash or a newline, and a login shell can print a banner before the
+/// command output, so neither the first token nor a fixed offset can be trusted.
+fn parse_sha256(stdout: &str) -> Option<String> {
+    stdout.split_whitespace().find_map(|token| {
+        let candidate = token.trim_start_matches('\\');
+        if candidate.len() == 64 && candidate.bytes().all(|b| b.is_ascii_hexdigit()) {
+            Some(candidate.to_ascii_lowercase())
+        } else {
+            None
+        }
+    })
+}
+
+/// First 12 characters of a hash, for messages that must stay readable.
+fn short_hash(hash: &str) -> &str {
+    &hash[..12.min(hash.len())]
 }
 
 /// Errors worth retrying automatically: connection trouble, timeouts and I/O
@@ -1451,6 +1492,35 @@ mod tests {
         assert!(!tokio::fs::try_exists(&renamed).await.unwrap());
 
         tokio::fs::remove_dir_all(&dir).await.ok();
+    }
+
+    #[test]
+    fn parses_sha256_output_robustly() {
+        let hash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        // Plain `sha256sum file`
+        assert_eq!(
+            parse_sha256(&format!("{hash}  /srv/file.bin\n")),
+            Some(hash.to_string())
+        );
+        // Escaped line (GNU prefixes a backslash when the name has one)
+        assert_eq!(
+            parse_sha256(&format!("\\{hash}  /srv/we\\ird.bin\n")),
+            Some(hash.to_string())
+        );
+        // A banner before the output must not be mistaken for the hash
+        assert_eq!(
+            parse_sha256(&format!("Welcome to server\n{hash}  /srv/file.bin\n")),
+            Some(hash.to_string())
+        );
+        // Uppercase output is normalised
+        assert_eq!(
+            parse_sha256(&format!("{}  f\n", hash.to_uppercase())),
+            Some(hash.to_string())
+        );
+        // Nothing usable
+        assert_eq!(parse_sha256(""), None);
+        assert_eq!(parse_sha256("sha256sum: /srv/file: No such file"), None);
+        assert_eq!(parse_sha256(&"a".repeat(63)), None);
     }
 
     #[test]

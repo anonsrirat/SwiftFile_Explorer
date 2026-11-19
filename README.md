@@ -122,14 +122,16 @@ Set the repository secret `TAURI_SIGNING_PRIVATE_KEY` to the contents of `instal
 
 ## Tests
 
-- Rust unit tests: 25 (path normalisation, shell quoting, POSIX modes, text decoding, DB
-  persistence, DPAPI round-trip, transfer contracts, overwrite policies). `cargo test`
-- Rust end-to-end tests: 5 in `src-tauri/tests/sftp_integration.rs`. They start a **real SSH +
+- Rust unit tests: 26 (path normalisation, shell quoting, POSIX modes, text decoding, DB
+  persistence, DPAPI round-trip, transfer contracts, overwrite policies, checksum parsing).
+  `cargo test`
+- Rust end-to-end tests: 6 in `src-tauri/tests/sftp_integration.rs`. They start a **real SSH +
   SFTP server in-process** (`russh` + `russh-sftp`, backed by a temp folder) and drive the real
   `SshManager`, `SessionManager` and `TransferManager`: connect, list, mkdir/create/rename,
   text read/write with conflict detection, chmod, recursive delete, search + cancel by caller id,
-  upload/download with every overwrite policy, same-server copy/move, shared transport, and a
-  rejected password. No Docker or network server is needed: `cargo test`
+  upload/download with every overwrite policy, same-server copy/move, shared transport, a rejected
+  password, and SHA-256 verified uploads (including a deliberate mismatch that must be discarded).
+  No Docker or network server is needed: `cargo test`
 - Frontend: 19 Vitest unit tests (path utilities, formatting, permission masks, file
   classification). `pnpm test`
 - Manual: the app was launched and the connection dialog, layout and window controls were verified

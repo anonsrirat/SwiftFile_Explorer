@@ -61,7 +61,47 @@ else
 fi
 rm -rf "$PORTABLE"
 
-cp build.log release/BUILD_LOG.txt 2>/dev/null || true
+# Checksums so the download can be verified after transfer.
+if command -v sha256sum >/dev/null 2>&1; then
+  (cd "$OUT" && sha256sum SwiftSFTP-Setup.exe SwiftSFTP.exe SwiftSFTP-Portable.zip > SHA256SUMS.txt)
+fi
+
+# Build report: describes exactly what was packaged instead of copying a stale log.
+VERSION="$(sed -n 's/.*"version": "\([^"]*\)".*/\1/p' package.json | head -n 1)"
+COMMIT="unknown"
+if command -v git >/dev/null 2>&1 && git rev-parse --short HEAD >/dev/null 2>&1; then
+  COMMIT="$(git rev-parse --short HEAD)"
+  if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+    COMMIT="$COMMIT (working tree had local changes)"
+  fi
+fi
+SIG_STATE="NOT signed - set TAURI_SIGNING_PRIVATE_KEY and rebuild"
+if [ -f "$OUT/SwiftSFTP-Setup.exe.sig" ]; then
+  SIG_STATE="signed (SwiftSFTP-Setup.exe.sig)"
+fi
+{
+  echo "SwiftSFTP Explorer $VERSION - release build report"
+  echo ""
+  echo "Built:     $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+  echo "Commit:    $COMMIT"
+  echo "Installer: $(basename "$SETUP_SRC")"
+  echo "Updater:   $SIG_STATE"
+  echo ""
+  echo "Toolchain:"
+  for tool in rustc cargo node pnpm; do
+    if command -v "$tool" >/dev/null 2>&1; then
+      echo "  $("$tool" --version 2>/dev/null | head -n 1)"
+    else
+      echo "  $tool not found"
+    fi
+  done
+  echo ""
+  echo "Artifacts:"
+  (cd "$OUT" && ls -l SwiftSFTP-Setup.exe SwiftSFTP.exe SwiftSFTP-Portable.zip 2>/dev/null | awk '{ printf "  %-26s %12s bytes\n", $9, $5 }')
+  echo ""
+  echo "SHA-256 (see SHA256SUMS.txt):"
+  if [ -f "$OUT/SHA256SUMS.txt" ]; then sed 's/^/  /' "$OUT/SHA256SUMS.txt"; fi
+} > release/BUILD_LOG.txt
 
 echo "release artifacts:"
 ls -lh "$OUT"

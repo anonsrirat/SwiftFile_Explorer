@@ -199,7 +199,7 @@ pnpm tauri build
 
 ไฟล์ที่ได้:
 - `src-tauri/target/release/swiftsftp.exe`
-- `src-tauri/target/release/bundle/nsis/SwiftSFTP Explorer_1.1.1_x64-setup.exe`
+- `src-tauri/target/release/bundle/nsis/SwiftSFTP Explorer_1.1.2_x64-setup.exe`
 
 จากนั้นรัน `bash scripts/package-release.sh` เพื่อคัดลอกและเปลี่ยนชื่อเป็น
 `release/windows/SwiftSFTP-Setup.exe` พร้อมสร้าง `SwiftSFTP-Portable.zip`

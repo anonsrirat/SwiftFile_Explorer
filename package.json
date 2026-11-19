@@ -1,7 +1,7 @@
 {
   "name": "swiftsftp-explorer",
   "private": true,
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "description": "SwiftSFTP Explorer - A fast, native SFTP file manager for Windows",
   "scripts": {

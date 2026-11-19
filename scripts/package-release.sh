@@ -28,6 +28,15 @@ cp "$SETUP_SRC" "$OUT/SwiftSFTP-Setup.exe"
 # Updater signature: uploaded next to latest.json on the GitHub release.
 if [ -f "$SETUP_SRC.sig" ]; then
   cp "$SETUP_SRC.sig" "$OUT/SwiftSFTP-Setup.exe.sig"
+  # Refuse to package a build whose updater signature does not match the public
+  # key that ships inside the app: the updater would reject every update.
+  if command -v node >/dev/null 2>&1; then
+    node scripts/verify-signature.cjs \
+      "$OUT/SwiftSFTP-Setup.exe" "$OUT/SwiftSFTP-Setup.exe.sig" "src-tauri/tauri.conf.json" || {
+      echo "error: updater signature does not verify against plugins.updater.pubkey" >&2
+      exit 1
+    }
+  fi
 fi
 cp "$EXE" "$OUT/SwiftSFTP.exe"
 

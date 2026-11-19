@@ -1,4 +1,4 @@
-# Known limitations — SwiftSFTP Explorer 1.1.1
+# Known limitations — SwiftSFTP Explorer 1.1.2
 
 These are real, current limitations of this build. Nothing here is hidden behind a disabled button:
 the UI does not offer features that are not implemented.

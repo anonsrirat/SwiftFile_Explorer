@@ -1,9 +1,24 @@
 # SwiftSFTP Explorer — Release Notes
 
-## 1.1.1 — 2026-11-20 (hardening pass, first release with a working updater)
+## 1.1.2 — 2026-11-20 (updater signing key fixed)
 
-This is the first release published together with `latest.json` and a `.sig`, so the in-app update
-check finally has something to read. It contains the whole hardening pass:
+- **The public key embedded in the app was wrong.** The `plugins.updater.pubkey` value in
+  `tauri.conf.json` did not match `installer/updater.key`, so every downloaded update would have been
+  rejected with "signature verification failed" — the in-app updater could never have worked, even
+  with `latest.json` in place. The embedded key now matches the key that signs the installer.
+- **Packaging now verifies it.** `scripts/verify-signature.cjs` checks the installer signature
+  against the key embedded in the app, and `scripts/package-release.ps1` / `.sh` refuse to build the
+  release folder when it does not verify, so this cannot ship silently again.
+- Contains everything from 1.1.1 below.
+
+Install 1.1.2 once by hand (1.1.1 and older cannot verify their own updates); from then on the
+updater works.
+
+## 1.1.1 — 2026-11-20 (hardening pass)
+
+Shipped `latest.json` and a `.sig` for the first time, so the in-app update check finally had
+something to read — but its embedded public key did not match the signing key (see 1.1.2), so it
+cannot update itself. It contains the whole hardening pass:
 
 - **Overwrite policies are respected everywhere.** A remote move used to `rename` straight onto the
   requested destination before the policy was resolved, so "skip" silently replaced the file that was

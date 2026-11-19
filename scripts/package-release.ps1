@@ -31,6 +31,15 @@ if (Test-Path "$($setup.FullName).sig") {
   $sigCopied = $true
 }
 
+# Refuse to package a build whose updater signature does not match the public key
+# that ships inside the app: the updater would reject every future update.
+if ($sigCopied -and (Get-Command node -ErrorAction SilentlyContinue)) {
+  & node "scripts\verify-signature.cjs" (Join-Path $out "SwiftSFTP-Setup.exe") (Join-Path $out "SwiftSFTP-Setup.exe.sig") "src-tauri\tauri.conf.json"
+  if ($LASTEXITCODE -ne 0) {
+    throw "Updater signature does not verify against plugins.updater.pubkey - refusing to package"
+  }
+}
+
 # Portable build: application + WebView2 note + licence.
 $portable = Join-Path $env:TEMP ("swiftsftp-portable-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Force -Path $portable | Out-Null

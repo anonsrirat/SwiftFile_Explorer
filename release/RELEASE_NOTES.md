@@ -1,6 +1,9 @@
 # SwiftSFTP Explorer — Release Notes
 
-## 1.1.0 — 2026-11-19 (hardening pass)
+## 1.1.1 — 2026-11-20 (hardening pass, first release with a working updater)
+
+This is the first release published together with `latest.json` and a `.sig`, so the in-app update
+check finally has something to read. It contains the whole hardening pass:
 
 - **Overwrite policies are respected everywhere.** A remote move used to `rename` straight onto the
   requested destination before the policy was resolved, so "skip" silently replaced the file that was

@@ -46,7 +46,7 @@ pnpm tauri build
 Outputs:
 
 - `src-tauri/target/release/swiftsftp.exe`
-- `src-tauri/target/release/bundle/nsis/SwiftSFTP Explorer_1.1.0_x64-setup.exe`
+- `src-tauri/target/release/bundle/nsis/SwiftSFTP Explorer_1.1.1_x64-setup.exe`
 
 The frontend build runs with `--max-old-space-size=4096` because Monaco is large; Monaco is emitted
 as a separate lazy chunk so the app shell stays small.

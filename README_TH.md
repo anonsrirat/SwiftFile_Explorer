@@ -156,7 +156,7 @@ ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
 การเผยแพร่เวอร์ชันใหม่ (สำหรับผู้พัฒนา):
 
 1. อัปเดตเลขเวอร์ชันใน `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`
-2. commit แล้ว push tag เช่น `git tag v1.1.0 && git push origin v1.1.0`
+2. commit แล้ว push tag เช่น `git tag v1.1.1 && git push origin v1.1.1`
 3. GitHub Actions (`.github/workflows/release.yml`) จะ build, เซ็นชื่อ และสร้าง draft release
    ที่มี `latest.json` + ไฟล์ `.sig` ให้
 4. ใส่ secret ใน GitHub repo: `TAURI_SIGNING_PRIVATE_KEY` (เนื้อหาไฟล์ `installer/updater.key`)
@@ -199,7 +199,7 @@ pnpm tauri build
 
 ไฟล์ที่ได้:
 - `src-tauri/target/release/swiftsftp.exe`
-- `src-tauri/target/release/bundle/nsis/SwiftSFTP Explorer_1.1.0_x64-setup.exe`
+- `src-tauri/target/release/bundle/nsis/SwiftSFTP Explorer_1.1.1_x64-setup.exe`
 
 จากนั้นรัน `bash scripts/package-release.sh` เพื่อคัดลอกและเปลี่ยนชื่อเป็น
 `release/windows/SwiftSFTP-Setup.exe` พร้อมสร้าง `SwiftSFTP-Portable.zip`

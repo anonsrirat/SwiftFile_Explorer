@@ -57,7 +57,7 @@ pnpm tauri build      # release build + NSIS installer
 Artifacts:
 
 - `src-tauri/target/release/swiftsftp.exe`
-- `src-tauri/target/release/bundle/nsis/SwiftSFTP Explorer_1.1.0_x64-setup.exe`
+- `src-tauri/target/release/bundle/nsis/SwiftSFTP Explorer_1.1.1_x64-setup.exe`
 
 `scripts/package-release.sh` (or `.ps1` on Windows) copies and renames them into `release/windows/`
 as `SwiftSFTP-Setup.exe` and `SwiftSFTP-Portable.zip`.

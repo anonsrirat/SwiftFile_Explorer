@@ -31,6 +31,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # `createUpdaterArtifacts` is on, so `tauri build` refuses to finish without
+      # the signing key. Fail in seconds instead of after a full release build.
+      - name: Check the updater signing key
+        shell: bash
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error title=Updater signing key missing::Add the repository secret TAURI_SIGNING_PRIVATE_KEY with the contents of installer/updater.key (Settings → Secrets and variables → Actions → New repository secret). Leave TAURI_SIGNING_PRIVATE_KEY_PASSWORD unset if the key has no password."
+            exit 1
+          fi
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
       - name: Build and publish
         uses: tauri-apps/tauri-action@v0
         env:

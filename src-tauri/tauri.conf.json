@@ -1,0 +1,74 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SwiftSFTP Explorer",
+  "version": "1.1.0",
+  "identifier": "com.swiftsftp.explorer",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "SwiftSFTP Explorer",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 940,
+        "minHeight": 600,
+        "center": true,
+        "resizable": true,
+        "decorations": false,
+        "transparent": false,
+        "dragDropEnabled": true,
+        "backgroundColor": "#0f1115"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: blob: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self' 'unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/anonsrirat/SwiftFile_Explorer/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI5MDFEQjg5RURFNUJCNzIKUldSeXUrWHRpZHNCdWJnNDBLTmRadm1XeHpjdGVkU1FLYTdKZUhxTWxhN0R6V2cwQnNFZlNPZGwK"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "publisher": "SwiftSFTP",
+    "copyright": "Copyright (c) 2026 SwiftSFTP",
+    "category": "Utility",
+    "shortDescription": "Fast, secure SFTP file manager for Windows",
+    "longDescription": "SwiftSFTP Explorer is a Windows file manager for servers. Browse remote folders, edit configuration files, and run fast, resumable transfers over a secure SSH connection.",
+    "licenseFile": "../installer/LICENSE.txt",
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "both",
+        "languages": ["English", "Thai"],
+        "displayLanguageSelector": true,
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "../installer/header.bmp",
+        "sidebarImage": "../installer/sidebar.bmp",
+        "compression": "lzma",
+        "startMenuFolder": "SwiftSFTP"
+      }
+    }
+  }
+}

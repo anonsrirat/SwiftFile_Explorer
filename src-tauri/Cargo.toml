@@ -1,0 +1,50 @@
+[package]
+name = "swiftsftp"
+version = "1.1.0"
+description = "SwiftSFTP Explorer"
+authors = ["SwiftSFTP"]
+edition = "2021"
+rust-version = "1.85"
+
+[lib]
+name = "swiftsftp_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+russh = { version = "0.65", default-features = false, features = ["ring", "rsa", "flate2"] }
+russh-sftp = { version = "3.0", default-features = false }
+rusqlite = { version = "0.42", features = ["bundled"] }
+chrono = "0.4"
+uuid = { version = "1", features = ["v4"] }
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+parking_lot = "0.12"
+dashmap = "6"
+futures = "0.3"
+sha2 = "0.10"
+base64 = "0.22"
+tauri-plugin-updater = "2.12.0"
+tauri-plugin-process = "2.3.1"
+
+[dev-dependencies]
+parking_lot = "0.12"
+rand = "0.10"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

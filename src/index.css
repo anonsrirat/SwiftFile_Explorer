@@ -1,0 +1,214 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #0a0c11;
+  --surface: #11141b;
+  --surface-2: #171b24;
+  --surface-3: #1f2431;
+  --surface-4: #272d3b;
+  --line: #252b37;
+  --line-strong: #333b4b;
+  --text: #e8ebf2;
+  --text-dim: #97a1b2;
+  --text-mute: #6b7385;
+  --brand: #6f6cf8;
+  --brand-strong: #8b89ff;
+  --brand-soft: rgba(111, 108, 248, 0.16);
+  --accent: #22d3ee;
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.14);
+  --warn: #fbbf24;
+  --ok: #34d399;
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --row-hover: rgba(255, 255, 255, 0.045);
+  --row-active: rgba(111, 108, 248, 0.16);
+}
+
+.light {
+  --bg: #e9edf4;
+  --surface: #ffffff;
+  --surface-2: #f5f7fb;
+  --surface-3: #eaeef5;
+  --surface-4: #dfe5ee;
+  --line: #dfe4ed;
+  --line-strong: #c9d2e0;
+  --text: #161c28;
+  --text-dim: #5a6578;
+  --text-mute: #7c879a;
+  --brand: #5b58ee;
+  --brand-strong: #4b48d6;
+  --brand-soft: rgba(91, 88, 238, 0.12);
+  --accent: #0891b2;
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.1);
+  --warn: #b45309;
+  --ok: #047857;
+  --shadow: 0 20px 46px rgba(15, 23, 42, 0.18);
+  --row-hover: rgba(15, 23, 42, 0.045);
+  --row-active: rgba(91, 88, 238, 0.14);
+}
+
+@theme inline {
+  --color-app: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-4: var(--surface-4);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--text);
+  --color-dim: var(--text-dim);
+  --color-mute: var(--text-mute);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-ok: var(--ok);
+
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Noto Sans Thai",
+    "Leelawadee UI", sans-serif;
+  --font-mono: "Cascadia Code", "Cascadia Mono", Consolas, "SF Mono", monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    user-select: none;
+    text-rendering: optimizeLegibility;
+  }
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid var(--brand-strong);
+    outline-offset: 1px;
+  }
+  input,
+  textarea,
+  select {
+    user-select: text;
+  }
+  ::selection {
+    background: var(--brand-soft);
+    color: var(--text);
+  }
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--surface-4);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--line-strong);
+    background-clip: content-box;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-4) transparent;
+  }
+}
+
+/* Window chrome */
+.title-drag {
+  -webkit-app-region: drag;
+}
+.title-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Subtle entrance used for panels, disabled with the animations setting */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.animate-panel {
+  animation: slide-up 160ms cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.animate-fade {
+  animation: fade-in 140ms ease-out;
+}
+.animate-pulse-soft {
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
+
+.no-anim *,
+.no-anim *::before,
+.no-anim *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Grid of virtualised file tiles */
+.grid-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--tile, 108px), 1fr));
+  gap: 6px;
+}
+
+/* Focus ring inside lists without the global outline */
+.row-focus:focus-visible {
+  outline: none;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--brand);
+}
+
+@layer components {
+  .nav-btn {
+    @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-dim transition-colors hover:bg-surface-3 hover:text-ink disabled:pointer-events-none disabled:opacity-30;
+  }
+}

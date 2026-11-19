@@ -1,0 +1,14 @@
+node_modules/
+dist/
+src-tauri/target/
+# Build outputs and packaged installers live here; the release notes and reports
+# are documentation and are tracked.
+release/*
+!release/*.md
+*.log
+.DS_Store
+
+# Updater signing key — never commit this. Add its contents as the
+# TAURI_SIGNING_PRIVATE_KEY secret in GitHub instead.
+installer/updater.key
+installer/updater.key.pub
